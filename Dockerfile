@@ -48,4 +48,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python health_check.py
 
 # Default command
-CMD ["python", "-m", "http.server", "8000", "--directory", "/app"]
+CMD ["tail", "-f", "/dev/null"]

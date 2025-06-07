@@ -29,7 +29,7 @@ def check_dependencies():
     except ImportError as e:
         print(f"❌ Could not import Google Generative AI SDK: {e}")
         print("   -> Make sure 'google-generativeai' is in requirements.txt")
-        return Falset
+        return False
     
     # Check essential development tools
     try:
