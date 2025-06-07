@@ -1,0 +1,78 @@
+services:
+  # Phase 1: Basic ADK Development Container
+  adk-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: adk-dev-container
+    ports:
+      - "8000:8000"  # Development server
+      - "8001:8001"  # Additional service port
+    volumes:
+      - ./src:/app/src:rw           # Source code mounting
+      - ./logs:/app/logs:rw         # Log files
+      - ./data:/app/data:rw         # Data persistence
+      - ./config:/app/config:ro     # Configuration files
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+      - DEV_MODE=true
+      - LOG_LEVEL=DEBUG
+    networks:
+      - adk-network
+    restart: unless-stopped
+    stdin_open: true    # Keep STDIN open for interactive use
+    tty: true          # Allocate a pseudo-TTY
+
+  # Phase 3: SQLite Database (for later phases)
+  database:
+    image: alpine:latest
+    container_name: adk-database
+    volumes:
+      - agent_data:/data
+    command: |
+      sh -c "
+        apk add --no-cache sqlite &&
+        mkdir -p /data &&
+        sqlite3 /data/agents.db 'CREATE TABLE IF NOT EXISTS agent_state (
+          id TEXT PRIMARY KEY,
+          data TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );' &&
+        tail -f /dev/null
+      "
+    networks:
+      - adk-network
+    profiles:
+      - full-dev
+    restart: unless-stopped
+
+  # Phase 2C: Ollama Container (Alternative LLM Backend)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: adk-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    networks:
+      - adk-network
+    profiles:
+      - ollama
+      - full-dev
+    restart: unless-stopped
+
+volumes:
+  agent_data:
+    driver: local
+  ollama_models:
+    driver: local
+
+networks:
+  adk-network:
+    driver: bridge
+    name: adk-development

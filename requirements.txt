@@ -1,0 +1,25 @@
+# Phase 1: Core Google AI & Development Dependencies
+google-generativeai==0.7.2
+python-dotenv==1.0.1
+requests==2.32.3
+openai==1.35.13
+
+# Explicitly add httpx to resolve openai dependency conflict
+httpx==0.27.0  # <-- ADD THIS LINE
+
+# Web Framework (FastAPI is excellent for serving models)
+fastapi==0.111.1
+uvicorn[standard]==0.30.1
+
+# Development & Testing Tools
+pytest==8.3.2
+black==24.4.2
+mypy==1.11.0
+ipython==8.26.0
+jupyter==1.0.0
+
+# Logging
+structlog==24.1.0
+
+# Protocol Buffers (often a required dependency for Google libs)
+protobuf==4.25.3
