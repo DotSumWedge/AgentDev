@@ -1,4 +1,4 @@
-# .gitignore for a Python project
+# .gitignore
 
 # 1. Byte-compiled, optimized, and C extension files
 # This covers your request for __pycache__ and is a best practice.
@@ -20,7 +20,7 @@ dist/
 env/
 venv/
 
-# 4. Secrets & Environment Variables (CRITICAL)
+# 4. Secrets & Environment Variables
 # Never commit your .env files.
 *.env
 
@@ -34,7 +34,7 @@ venv/
 .coverage
 htmlcov/
 
-# 7. Project-specific generated files (Your request)
+# 7. Project-specific generated files
 directory_context.md
 
 # 8. Runtime directories mounted in Docker
