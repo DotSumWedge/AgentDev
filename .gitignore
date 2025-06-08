@@ -1,0 +1,46 @@
+# .gitignore for a Python project
+
+# 1. Byte-compiled, optimized, and C extension files
+# This covers your request for __pycache__ and is a best practice.
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 2. Distribution / packaging artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# 3. Virtual Environments
+# Although your venv is in Docker, this is good for local development.
+.env
+.venv
+env/
+venv/
+
+# 4. Secrets & Environment Variables (CRITICAL)
+# Never commit your .env files.
+*.env
+
+# 5. IDE / Editor configuration files
+.vscode/
+.idea/
+*.sublime-*
+
+# 6. Testing artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 7. Project-specific generated files (Your request)
+directory_context.md
+
+# 8. Runtime directories mounted in Docker
+logs/
+data/
+
+# 9. OS-specific files
+.DS_Store
+Thumbs.db
