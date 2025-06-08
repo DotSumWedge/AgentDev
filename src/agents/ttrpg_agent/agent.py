@@ -3,28 +3,15 @@
 import re
 import time
 import uuid
-from typing import Optional, AsyncIterator, Dict, Any
-from pydantic import PrivateAttr, Field, BaseModel
+from typing import Optional, AsyncIterator
+from pydantic import PrivateAttr
 from google.adk.agents import BaseAgent
-import google.genai.types as genai_types
+
+# --- Final Approach: Use the official ADK Event and Content types ---
+from google.adk.events import Event
+from google.genai import types as genai_types
+
 from src.llm_client import get_llm_client, UnifiedLLMClient
-
-# --- FINALIZED Pydantic Models ---
-
-class Actions(BaseModel):
-    state_delta: Dict[str, Any] = Field(default_factory=dict)
-
-class PatchedGenerateContentResponse(genai_types.GenerateContentResponse):
-    """
-    A fully patched version of GenerateContentResponse that includes all fields
-    required by the ADK runner and UI for a complete event object.
-    """
-    id: str = Field(default_factory=lambda: f"event-{uuid.uuid4()}")
-    # --- KEY CHANGE: Author is no longer hardcoded. It will be set dynamically. ---
-    author: str 
-    partial: bool = Field(default=False)
-    actions: Actions = Field(default_factory=Actions)
-    timestamp: float = Field(default_factory=time.time)
 
 
 class TTRPGNameGeneratorAgent(BaseAgent):
@@ -34,15 +21,14 @@ class TTRPGNameGeneratorAgent(BaseAgent):
     def __init__(self, **kwargs):
         super().__init__(name="ttrpg_name_generator_agent_local", **kwargs)
 
-    # ... (no changes to get_client or _clean_response) ...
     def get_client(self) -> Optional[UnifiedLLMClient]:
         if not self._initialized:
-            print("\n[DEBUG] TTRPGNameGeneratorAgent: Triggering lazy initialization of LLM client...")
+            print("\n[DEBUG] TTRPGNameGeneratorAgent: Triggering lazy initialization...")
             try:
                 self._llm_client = get_llm_client()
-                print("[DEBUG] TTRPGNameGeneratorAgent: LLM client created successfully.")
+                print("[DEBUG] ...LLM client created successfully.")
             except Exception as e:
-                print(f"[ERROR] TTRPGNameGeneratorAgent: Failed to create LLM client: {repr(e)}")
+                print(f"[ERROR] ...Failed to create LLM client: {repr(e)}")
                 self._llm_client = None
             finally:
                 self._initialized = True
@@ -52,30 +38,34 @@ class TTRPGNameGeneratorAgent(BaseAgent):
         cleaned_text = re.sub(r'<think>.*?</think>\s*', '', text, flags=re.DOTALL)
         return cleaned_text.strip()
 
-    async def _run_async_impl(self, ctx) -> AsyncIterator:
+    async def _run_async_impl(self, ctx) -> AsyncIterator[Event]:
         print("\n[INFO] TTRPGNameGeneratorAgent: Agent run started.")
         llm_client = self.get_client()
+        current_invocation_id = ctx.invocation_id
+        print(f"[INFO] TTRPGNameGeneratorAgent: Captured invocation_id: '{current_invocation_id}'")
 
-        # --- KEY CHANGE: Helper now takes the author's name ---
-        def create_response(text: str, author: str):
-            response_part = genai_types.Part(text=text)
-            response_content = genai_types.Content(parts=[response_part], role="model")
-            response_candidate = genai_types.Candidate(content=response_content)
-            return PatchedGenerateContentResponse(
-                candidates=[response_candidate],
-                author=author # Set the author dynamically
+        def create_event(text: str, author: str, invocation_id: str) -> Event:
+            # Create the part, content, and then the final Event object
+            # This matches the schema shown in the official ADK documentation curl examples
+            part = genai_types.Part(text=text)
+            content = genai_types.Content(parts=[part], role="model")
+            
+            # The key change: We construct an Event with top-level 'content'
+            return Event(
+                content=content,
+                author=author,
+                invocation_id=invocation_id
             )
 
         if not llm_client:
-            # Use self.name, which is available from BaseAgent
-            yield create_response("Agent not initialized. Could not create LLM client.", self.name)
+            yield create_event("Agent not initialized. Could not create LLM client.", self.name, current_invocation_id)
             return
 
         query = ctx.user_content.parts[0].text if ctx.user_content and hasattr(ctx.user_content, 'parts') and ctx.user_content.parts else ""
         print(f"[INFO] TTRPGNameGeneratorAgent: Received query: '{query}'")
 
         if not query:
-            yield create_response("Could not extract a valid query from the request.", self.name)
+            yield create_event("Could not extract a valid query from the request.", self.name, current_invocation_id)
             return
 
         system_prompt = "You are a creative assistant for a TTRPG Game Master. Your task is to generate a name for a character based on the user's request. Respond concisely with only the generated name."
@@ -86,19 +76,19 @@ class TTRPGNameGeneratorAgent(BaseAgent):
             final_response_text = self._clean_response(raw_response_text)
             print(f"[INFO] TTRPGNameGeneratorAgent: Generated response: '{final_response_text}'")
             
-            # --- KEY CHANGE: Create the response using our helper and self.name ---
-            response_obj = create_response(final_response_text, self.name)
+            response_event = create_event(final_response_text, self.name, current_invocation_id)
 
-            print(f"[DEBUG] Verifying raw object data: id='{response_obj.id}', author='{response_obj.author}'")
-            print(f"[DEBUG] Final object to yield (JSON):\n{response_obj.model_dump_json(indent=2)}")
+            # VERIFICATION LOG: Print the JSON, excluding None values to match the clean curl output
+            print("\n--- BEGIN YIELDED OBJECT ---")
+            print(response_event.model_dump_json(indent=2, exclude_none=True))
+            print("--- END YIELDED OBJECT ---\n")
             
-            yield response_obj
+            yield response_event
             print("[INFO] TTRPGNameGeneratorAgent: Successfully yielded response to ADK runner.")
 
         except Exception as e:
             error_message = f"An error occurred during LLM generation: {repr(e)}"
             print(f"[ERROR] TTRPGNameGeneratorAgent: {error_message}")
-            yield create_response(error_message, self.name)
-
+            yield create_event(error_message, self.name, current_invocation_id)
 
 root_agent = TTRPGNameGeneratorAgent()

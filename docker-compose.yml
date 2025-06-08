@@ -24,6 +24,8 @@ services:
     restart: unless-stopped
     stdin_open: true    # Keep STDIN open for interactive use
     tty: true          # Allocate a pseudo-TTY
+    working_dir: /app/src/agents 
+    command: adk web
 
   # Phase 3: SQLite Database (for later phases)
   database:
