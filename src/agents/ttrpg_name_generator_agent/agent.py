@@ -1,4 +1,4 @@
-# src/agents/ttrpg_agent/agent.py
+# src/agents/ttrpg_name_generator_agent/agent.py
 
 import re
 import time
@@ -68,7 +68,7 @@ class TTRPGNameGeneratorAgent(BaseAgent):
             yield create_event("Could not extract a valid query from the request.", self.name, current_invocation_id)
             return
 
-        system_prompt = "You are a creative assistant for a TTRPG Game Master. Your task is to generate a name for a character based on the user's request. Respond concisely with only the generated name."
+        system_prompt = "You are a creative assistant for a TTRPG Game Master. Your task is to generate a name for a character, town, river, or any other thing that can be named based on the user's request. Respond concisely with only the generated name."
         full_prompt = f"{system_prompt}\n\nUser Request: {query}"
 
         try:

@@ -2,6 +2,8 @@ import os
 import argparse
 from pathlib import Path
 
+# python compile_context.py . --output my_output.txt
+
 # --- Configuration ---
 # Add directories or files you want to ignore by default.
 # This helps keep the context file clean and focused.
